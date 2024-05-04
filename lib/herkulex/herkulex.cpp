@@ -60,12 +60,44 @@ void Herkulex::txPacket(uint8_t packetSize, uint8_t* data)
 }
 
 //------------------------------------------------------------------------------
+// void Herkulex::rxPacket(uint8_t packetSize, uint8_t* data)
+// {
+//     printf("READ %d Bytes on serial\n", serial->read(data, packetSize));
+
+//     for (int i =0; i < packetSize; i++)
+//     {
+//         printf("\t0x%X", data[i]);
+//     }
+//     printf("\n");
+// }
+
 void Herkulex::rxPacket(uint8_t packetSize, uint8_t* data)
 {
-    printf("READ %d Bytes on serial\n", serial->read(data, packetSize));
+    int index = 0;
+    uint8_t byte;
 
-    for (int i =0; i < packetSize; i++)
-    {
+    // Lecture de la trame jusqu'à trouver 0xFF
+    do {
+        serial->read(&byte, 1);
+    } while (byte != 0xFF);
+
+    // on a le premier 0xFF, on regarde le suivant
+    serial->read(&byte, 1);
+    if (byte != 0xFF) {
+        // on a pas le bon début de la trame, on recommence
+        return rxPacket(packetSize, data);
+    }
+
+    // Si on a les deux 0xFF, on commence la lecture de la trame
+    data[index++] = 0xFF;
+    data[index++] = 0xFF;
+    while (index < packetSize) {
+        serial->read(&data[index++], 1);
+    }
+
+    // Lecture des données reçues
+    printf("READ %d Bytes on serial\n", packetSize);
+    for (int i = 0; i < packetSize; i++) {
         printf("\t0x%X", data[i]);
     }
     printf("\n");
@@ -224,8 +256,9 @@ int8_t Herkulex::getStatus(uint8_t id)
         return -1;
     }
 
+
     status = rxBuf[7];  // Status Error
-    //status = rxBuf[8];  // Status Detail
+    //status = rxBuf[10];  // Status Detail
     
     return status;
 }
@@ -258,16 +291,16 @@ int16_t Herkulex::getPos(uint8_t id)
     rxPacket(13, rxBuf);
 
     // Checksum1
-    uint8_t chksum1 = (rxBuf[2]^rxBuf[3]^rxBuf[4]^rxBuf[7]^rxBuf[8]^rxBuf[9]^rxBuf[10]^rxBuf[11]^rxBuf[12]) & 0xFE;    
+    uint8_t chksum1 = (rxBuf[2]^rxBuf[3]^rxBuf[4]^rxBuf[7]^rxBuf[8]^rxBuf[9]^rxBuf[10]^rxBuf[11]^rxBuf[12]) & 0xFE; // remove rxBuf[12] from the calculation
     if (chksum1 != rxBuf[5])
     {
-        printf(" RX buf 5 : %d\t checsum1 : %d\n", rxBuf[5], chksum1);
+        //printf(" RX buf 5 : %d\t checsum1 : %d\n", rxBuf[5], chksum1);
 
-        return -1;
+        return 0; //-1
     }
     
     // Checksum2
-    uint8_t chksum2 = (~rxBuf[5]&0xFE);
+    uint8_t chksum2 = (~chksum1)&0xFE;
     if (chksum2 != rxBuf[6])
     {        
         printf(" RX buf 6 : %d\t checsum2 : %d\n", rxBuf[6], chksum2);
@@ -275,7 +308,7 @@ int16_t Herkulex::getPos(uint8_t id)
         return -1;
     }
 
-    position = ((rxBuf[10]&0x03)<<8) | rxBuf[9];
+    position = (((rxBuf[10]&0x03)<<8) | rxBuf[9]) & 0x03FF;
         
     return position;
 }

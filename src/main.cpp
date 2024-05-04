@@ -30,7 +30,7 @@ DigitalOut M2(D8);
 
 
 
-Herkulex servo(PA_9, PA_10, 115200); 
+Herkulex servo(PB_6, PB_7, 115200); 
 
 CAN can(PA_11, PA_12,1000000);
 
@@ -52,7 +52,7 @@ int main() {
 
     // servo.clear(ALL_HERKULEX);
     // servo.setTorque(ALL_HERKULEX, 0X60);
-    initialisation_herkulex();
+    //initialisation_herkulex();
     //servo.setTorque(HERKULEX1, TORQUE_ON);
     //servo.setTorque(HERKULEX2, TORQUE_ON);
     
@@ -61,11 +61,12 @@ int main() {
     // M0 = 0;
     // M1 = 0;
     // M2 = 0;
-    initStepper();
+    // initStepper();
     // stepper(1000, 0, 0, 0, 1, 1);
     // blockStepper();
 
-
+        servo.setTorque(0xFD,0x00);  
+        servo.clear(0xFD);
 
 
     while (1) {
@@ -81,6 +82,12 @@ int main() {
 
         //servo.positionControl(HERKULEX2, 100, 100,RLED_ON);
         //counterclockwise();
+        //int position = servo.getPos(0xFD);
+        //printf("Position: %d\n", position);
+        int status = servo.getStatus(0xFD);
+        printf("Status: %d\n", status); 
+        ThisThread::sleep_for(2000ms);
+
             
         CANMessage msg;
         if (can.read(msg)){
